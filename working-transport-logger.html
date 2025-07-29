@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Public Transport Coverage Logger</title>
+  <meta charset="UTF-8" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    body, html {
+      margin: 0;
+      height: 100%;
+      font-family: Arial, sans-serif;
+    }
+
+    #map {
+      height: 100%;
+      width: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 1;
+    }
+
+    .header {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+      background: rgba(255, 255, 255, 0.9);
+      padding: 10px 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    .form-container {
+      position: absolute;
+      top: 80px;
+      left: 10px;
+      z-index: 1000;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 20px;
+      border-radius: 8px;
+      max-width: 350px;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    .info-box {
+      position: absolute;
+      top: 80px;
+      right: 10px;
+      z-index: 1000;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 15px;
+      border-radius: 8px;
+      max-width: 250px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+
+
+    .confirmation-message {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 9999;
+      background: rgba(40, 167, 69, 0.95);
+      color: white;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      text-align: left;
+      min-width: 250px;
+      max-width: 300px;
+      display: none;
+      animation: slideInOut 3s ease-in-out;
+    }
+
+    @keyframes slideInOut {
+      0% { opacity: 0; transform: translateX(100%); }
+      20% { opacity: 1; transform: translateX(0); }
+      80% { opacity: 1; transform: translateX(0); }
+      100% { opacity: 0; transform: translateX(100%); }
+    }
+
+
+
+    .confirmation-message h3 {
+      margin: 0 0 8px 0;
+      font-size: 16px;
+    }
+
+    .confirmation-message p {
+      margin: 3px 0;
+      font-size: 13px;
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+
+    button {
+      background: #007bff;
+      color: white;
+      padding: 10px 15px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-right: 10px;
+    }
+
+    button:hover {
+      background: #0056b3;
+    }
+
+    .test-button {
+      background: #28a745;
+      margin-top: 10px;
+    }
+
+    .marker-bus {
+      font-size: 24px;
+      cursor: pointer;
+    }
+
+    .marker-train {
+      font-size: 28px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h2>🚌 Public Transport Coverage & Feedback Logger</h2>
+  </div>
+
+  <div id="map"></div>
+
+  <div class="form-container">
+    <h3>📝 Feedback Form</h3>
+    <form id="feedbackForm">
+      <div class="form-group">
+        <label for="name">Your Name:</label>
+        <input type="text" id="name" required>
+      </div>
+
+      <div class="form-group">
+        <label for="age">Your Age:</label>
+        <input type="number" id="age" required>
+      </div>
+
+      <div class="form-group">
+        <label for="commuterType">Type of Commuter:</label>
+        <select id="commuterType">
+          <option>Student</option>
+          <option>Working Adult</option>
+          <option>Elderly</option>
+          <option>Other</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="transportMode">Mode of Transport:</label>
+        <select id="transportMode">
+          <option value="bus">Bus</option>
+          <option value="train">Train</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="issueType">Reported Issue:</label>
+        <select id="issueType">
+          <option value="Delay">Delay</option>
+          <option value="Overcrowding">Overcrowding</option>
+          <option value="Unsafe Bus Stop/Station">Unsafe Bus Stop/Station</option>
+          <option value="No Service">No Service</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="rating">Rate the Experience (1=Very Poor, 5=Excellent):</label>
+        <select id="rating">
+          <option>1</option>
+          <option>2</option>
+          <option>3</option>
+          <option>4</option>
+          <option>5</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="waitTime">Wait Time at Stop (minutes):</label>
+        <input type="number" id="waitTime" min="0">
+      </div>
+
+      <div class="form-group">
+        <label for="travelTime">Actual Travel Time (minutes):</label>
+        <input type="number" id="travelTime" min="0">
+      </div>
+
+      <div class="form-group">
+        <label for="timestamp">Date & Time of Journey:</label>
+        <input type="datetime-local" id="timestamp">
+      </div>
+
+      <div class="form-group">
+        <label for="description">Brief Description (Optional):</label>
+        <textarea id="description" rows="3"></textarea>
+      </div>
+
+      <div class="form-group">
+        <label for="latitude">Latitude:</label>
+        <input type="text" id="latitude" readonly>
+      </div>
+
+      <div class="form-group">
+        <label for="longitude">Longitude:</label>
+        <input type="text" id="longitude" readonly>
+      </div>
+
+      <button type="button" onclick="submitForm()">Submit Feedback</button>
+      <button type="button" onclick="clearForm()">Clear Form</button>
+    </form>
+  </div>
+
+  <div class="info-box">
+    <h4>📍 How to Select Location</h4>
+    <p><strong>Method 1:</strong> Click anywhere on the map</p>
+    <p><strong>Method 2:</strong> Click on transport markers</p>
+    <p><strong>Current Mode:</strong> <span id="currentMode">Bus</span></p>
+    <button class="test-button" onclick="testMapClick()">Test Map Click</button>
+    <button class="test-button" onclick="addTestMarkers()">Add Test Markers</button>
+  </div>
+
+
+
+  <div class="confirmation-message" id="confirmationMessage">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+      <h3 style="margin: 0;">📍 Location Selected!</h3>
+      <button onclick="closeConfirmation()" style="background: none; border: none; color: white; font-size: 18px; cursor: pointer; padding: 0; margin: 0;">×</button>
+    </div>
+    <p id="confirmLocationName">Location name</p>
+    <p id="confirmLocationCoords">Coordinates</p>
+  </div>
+
+  <!-- Google Form (Hidden) -->
+  <form id="googleForm"  
+        action="https://docs.google.com/forms/u/0/d/e/1FAIpQLSeM6PupmC6dnH3KxepMT7HVFyqU5aBRfNfsDlvGxgblnm1zSg/formResponse" 
+        method="POST"  style="display:none;">
+    <input name="entry.767500521" id="google_name">
+    <input name="entry.1648274198" id="google_age">
+    <input name="entry.1206423878" id="google_commuter">
+    <input name="entry.1011649630" id="google_mode">
+    <input name="entry.1502836284" id="google_issue">
+    <input name="entry.916252961" id="google_rating">
+    <input name="entry.574430727" id="google_wait">
+    <input name="entry.1622624700" id="google_travel">
+    <input name="entry.1337325266" id="google_timestamp">
+    <input name="entry.1744976902" id="google_description">
+    <input name="entry.792369327" id="google_lat">
+    <input name="entry.220676546" id="google_lng">
+  </form>
+  <iframe name="hidden_iframe" style="display:none;"></iframe>
+
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script>
+    // Global variables
+    let map;
+    let selectedLocation = null;
+    let currentMarkers = [];
+
+    // Real Sri Lankan bus stations from GeoJSON data
+    const busStops = [
+      // Major Bus Stations
+      { name: 'Katunayake Airport Bus Terminal', lat: 7.1751325, lng: 79.8886332 },
+      { name: 'Negombo Bus Depot', lat: 7.2216047, lng: 79.8514419 },
+      { name: 'Puttalam Bus Station', lat: 8.0278817, lng: 79.8333513 },
+      { name: 'Chilaw CTB Bus Stand', lat: 7.5767494, lng: 79.7961515 },
+      { name: 'Wennappuwa Bus Stand', lat: 7.3423741, lng: 79.8417382 },
+      { name: 'Alawwa Central Bus Stand', lat: 7.2960675, lng: 80.2374601 },
+      { name: 'Polgahawela Bus Stand', lat: 7.3355156, lng: 80.3002242 },
+      { name: 'Killinochchi Bus Station', lat: 9.3833191, lng: 80.4066967 },
+      { name: 'Anamaduwa Bus Station', lat: 7.8789837, lng: 80.0119288 },
+      { name: 'Thambuttegama Bus Station', lat: 8.1561538, lng: 80.2969409 },
+      
+      // Bus Stops
+      { name: 'Nittambuwa Old Bus Stand', lat: 7.139915, lng: 80.0954259 },
+      { name: 'Veyangoda Bus Station', lat: 7.1531545, lng: 80.0577355 },
+      { name: 'Mirigama Bus Station', lat: 7.2428859, lng: 80.127163 },
+      { name: 'Nattandiya Bus Station', lat: 7.4112619, lng: 79.8644902 },
+      { name: 'Ganemulla Bus Stand', lat: 7.0662794, lng: 79.9611268 },
+      { name: 'Makandura Bus Station', lat: 7.3227673, lng: 79.9768432 },
+      { name: 'Divulapitiya Bus Stand', lat: 7.2251913, lng: 80.0197251 },
+      { name: 'Madampe Bus Station', lat: 7.496852, lng: 79.8409839 },
+      { name: 'Taladuwa Bus Station', lat: 7.2036857, lng: 79.842081 },
+      { name: 'Wennappuwa Depot', lat: 7.3271251, lng: 79.8451185 },
+      
+      // Local Bus Stops
+      { name: 'Imbulgasdeniya Bus Stop', lat: 7.3097616, lng: 80.3187445 },
+      { name: 'Kongashandiya Bus Stop', lat: 7.3131515, lng: 80.3159611 },
+      { name: 'Karandana Bus Stop', lat: 7.3203364, lng: 80.3154939 },
+      { name: 'Kulumaddu Junction', lat: 8.7626392, lng: 80.4643473 },
+      { name: 'Senapura Bus Stop', lat: 8.0926135, lng: 80.4702318 },
+      { name: 'Oraliyadda Bus Stop', lat: 7.3278679, lng: 80.3075692 },
+      { name: 'Puwakwatta Bus Stop', lat: 7.3262997, lng: 80.3122436 },
+      { name: 'BOI Bus Stop', lat: 7.3253375, lng: 80.3133433 },
+      { name: 'Serapis Bus Stop', lat: 7.3239949, lng: 80.3138269 },
+      { name: 'Moragolla Bus Stop', lat: 7.3163287, lng: 80.315063 },
+      { name: 'Wattarama Temple Bus Stop', lat: 7.3048512, lng: 80.3208248 },
+      { name: 'Keselwatugoda Bus Stop', lat: 7.3008586, lng: 80.3206809 },
+      { name: 'Ayurwedha Bus Stop', lat: 7.0917137, lng: 80.0369083 },
+      { name: 'Weediyawatta Bus Stop', lat: 7.0940174, lng: 80.0388683 },
+      { name: 'Lyceum Bus Stop', lat: 7.104688, lng: 80.0431142 },
+      { name: 'Wisse Kanuwa Bus Stop', lat: 7.1077801, lng: 80.0452064 },
+      { name: 'Bogamuwa Bus Stop', lat: 7.110688, lng: 80.051196 },
+      { name: 'Unagahadeniya Bus Stop', lat: 7.1198418, lng: 80.1166333 },
+      { name: 'Urapola Bus Stop', lat: 7.0961906, lng: 80.144978 },
+      { name: 'Dikkanda Junction Bus Stop', lat: 7.0704715, lng: 80.0932309 },
+      { name: 'Walgammulla Bus Stop', lat: 7.07703, lng: 80.121163 },
+      { name: 'Batagolla Bus Stop', lat: 7.0761073, lng: 80.0450635 },
+      { name: 'Nelligahamula Bus Stop', lat: 7.0843026, lng: 80.0788362 },
+      { name: 'Dehiyagatha Bus Stop', lat: 7.1078178, lng: 79.8839992 },
+      { name: 'Dewalegama Bus Stop', lat: 7.284085, lng: 80.322541 },
+      { name: 'Edurapotha Bus Stop', lat: 7.2655085, lng: 80.3271611 },
+      { name: 'Katiyawa Yaya 04 Junction', lat: 8.0988289, lng: 80.4344249 },
+      { name: 'Imbulgasdeniya Library Bus Stop', lat: 7.3116492, lng: 80.3169674 },
+      { name: 'Alawwa-Kurunegala Bus Stop', lat: 7.2942445, lng: 80.2408757 },
+      { name: '16kanuwa Bus Stop', lat: 7.6626423, lng: 80.2241688 },
+      { name: 'Kurunegala Bus Stop', lat: 7.6553943, lng: 80.2211229 },
+      { name: 'Werella Bus Stop', lat: 7.6673021, lng: 80.2262444 },
+      { name: 'Anuradhapura Bus Stop', lat: 7.6557982, lng: 80.2210067 },
+      { name: 'Nadesapillai Memorial Bus Halt', lat: 8.7299734, lng: 80.5125159 },
+      { name: 'Puththukkulam Bus Halt', lat: 8.7617879, lng: 80.2581563 },
+      { name: 'Sinnathampanai Bus Stop', lat: 8.6372654, lng: 80.3848711 }
+    ];
+
+    const trainStations = [
+      // Major Railway Stations
+      { name: 'Katunayake Airport Railway Station', lat: 7.157917, lng: 79.8752569 },
+      { name: 'Ragama Railway Station', lat: 7.0299493, lng: 79.921428 },
+      { name: 'Polgahawela Junction', lat: 7.3307027, lng: 80.3011647 },
+      { name: 'Alawwa Railway Station', lat: 7.2934242, lng: 80.2386365 },
+      { name: 'Killinochchi Railway Station', lat: 9.3857084, lng: 80.4059976 },
+      { name: 'Anuradhapura New Town', lat: 8.321327, lng: 80.3992715 },
+      { name: 'Mihintale Railway Station', lat: 8.3586214, lng: 80.5016942 },
+      { name: 'Medawachchiya Railway Station', lat: 8.5545098, lng: 80.4581661 },
+      { name: 'Paranthan Railway Station', lat: 9.4401189, lng: 80.407105 },
+      { name: 'Elephant Pass Railway Station', lat: 9.5023899, lng: 80.4058641 },
+      
+      // Regional Railway Stations
+      { name: 'Wanawasala Railway Station', lat: 6.9755509, lng: 79.8993572 },
+      { name: 'Bujjomuwa Railway Station', lat: 7.2731777, lng: 80.2106384 },
+      { name: 'Yaththalgoda Railway Station', lat: 7.270437, lng: 80.1943101 },
+      { name: 'Ambepussa Railway Station', lat: 7.2559962, lng: 80.1693049 },
+      { name: 'Botale Railway Station', lat: 7.2565981, lng: 80.1531824 },
+      { name: 'Batuwatta Railway Station', lat: 7.0551005, lng: 79.9372147 },
+      { name: 'Chilaw Railway Station', lat: 7.5757856, lng: 79.7909316 },
+      { name: 'Manuwangama Railway Station', lat: 7.6006132, lng: 79.8274738 },
+      { name: 'Kiriyankalli Railway Station', lat: 7.7571732, lng: 79.8282517 },
+      { name: 'Walahapitiya Railway Station', lat: 7.439463, lng: 79.8591858 },
+      { name: 'Kudawewa Railway Station', lat: 7.4621812, lng: 79.8530119 },
+      { name: 'Kakkapalliya Railway Station', lat: 7.5328175, lng: 79.8227037 },
+      { name: 'Mundalama Railway Station', lat: 7.7975461, lng: 79.8256822 },
+      { name: 'Bangadeniya Railway Station', lat: 7.6272671, lng: 79.8286013 },
+      { name: 'Bulugahagoda Railway Station', lat: 7.0655794, lng: 79.9454477 },
+      { name: 'Wilwatta Railway Station', lat: 7.2563223, lng: 80.1354324 },
+      { name: 'Mirigama Railway Station', lat: 7.2425912, lng: 80.1265584 },
+      { name: 'Hiriyala Railway Station', lat: 7.6975804, lng: 80.3397981 },
+      { name: 'Ambanpola Railway Station', lat: 7.9188843, lng: 80.2461079 },
+      { name: 'Muttetugala Railway Station', lat: 7.4956732, lng: 80.3791226 },
+      { name: 'Srawasthipura Railway Station', lat: 8.2987964, lng: 80.3769783 },
+      { name: 'Nailiya Railway Station', lat: 7.449891, lng: 80.3587223 },
+      { name: 'Maho Junction Railway Station', lat: 7.8231561, lng: 80.2750922 },
+      { name: 'Talawa Railway Station', lat: 8.231752, lng: 80.348274 },
+      { name: 'Thambuttegama Railway Station', lat: 8.1543184, lng: 80.3038834 },
+      { name: 'Pothuhera Railway Station', lat: 7.4198455, lng: 80.3274809 },
+      { name: 'Thalawattegedara Railway Station', lat: 7.3878803, lng: 80.3016136 },
+      { name: 'Thandikulam Railway Station', lat: 8.7782563, lng: 80.4850221 },
+      { name: 'Parasangaswewa Railway Station', lat: 8.4453692, lng: 80.4315165 },
+      { name: 'Murikandi-Kokavil Railway Station', lat: 9.2063495, lng: 80.4175742 },
+      { name: 'Ariviyal Nagar Railway Station', lat: 9.3187473, lng: 80.4076622 },
+      { name: 'Pesalai Railway Station', lat: 9.0823153, lng: 79.8227946 },
+      { name: 'Talaimannar Railway Station', lat: 9.1033259, lng: 79.7298828 },
+      { name: 'Kekirawa Railway Station', lat: 8.0584532, lng: 80.5814517 },
+      { name: 'Pannaliya Railway Station', lat: 7.3286016, lng: 80.3253063 },
+      { name: 'Ganewatte Railway Station', lat: 7.6550184, lng: 80.3486525 },
+      { name: 'Wellawa Railway Station', lat: 7.5596275, lng: 80.3661793 },
+      { name: 'Galgamuwa Railway Station', lat: 8.0021635, lng: 80.2715285 },
+      { name: 'Nagollagama Railway Station', lat: 7.7538118, lng: 80.314565 },
+      { name: 'Girambe Railway Station', lat: 7.3646496, lng: 80.3025304 },
+      { name: 'Madhu Road Railway Station', lat: 8.7738352, lng: 80.1501633 },
+      { name: 'Rambukkana Railway Station', lat: 7.3210536, lng: 80.3903192 },
+      { name: 'Randenigama Railway Station', lat: 7.8485354, lng: 80.2593352 },
+      { name: 'Sawarana Railway Station', lat: 7.5614974, lng: 79.805341 },
+      { name: 'Timbiriyagedara Railway Station', lat: 7.7812961, lng: 80.2976683 },
+      { name: 'Tismalpola Railway Station', lat: 7.3217113, lng: 80.3431512 },
+      { name: 'Viralmurippuwa Railway Station', lat: 8.5308063, lng: 80.446541 },
+      { name: 'Walakumbura Railway Station', lat: 7.3138576, lng: 80.2690495 },
+      { name: 'Yatagama Railway Station', lat: 7.3186864, lng: 80.3641048 },
+      { name: 'Konwewa Railway Station', lat: 7.8507932, lng: 80.3491121 },
+      { name: 'Chettikulam Railway Station', lat: 8.6689844, lng: 80.3059036 },
+      { name: 'Kattuwa Railway Station', lat: 7.2399357, lng: 79.8475622 },
+      { name: 'Noor Nagar Railway Station', lat: 8.035971, lng: 79.8398157 },
+      { name: 'Kadigamuwa Railway Station', lat: 7.3179288, lng: 80.4333295 },
+      { name: 'Wadurawa Railway Station', lat: 7.167838, lng: 80.0660584 },
+      { name: 'Battulu Oya Railway Station', lat: 7.7272017, lng: 79.8316925 },
+      { name: 'Yagoda Railway Station', lat: 7.0747267, lng: 79.9739 },
+      { name: 'Horape Railway Station', lat: 7.0165896, lng: 79.918322 },
+      { name: 'Enderamulla Railway Station', lat: 7.0004396, lng: 79.9068341 },
+      { name: 'Hunupitiya Railway Station', lat: 6.9877406, lng: 79.9004906 },
+      { name: 'Heendeniya-Pattigoda Railway Station', lat: 7.1410796, lng: 80.0472008 },
+      { name: 'Megalegoda Railway Station', lat: 7.133754, lng: 80.0363003 }
+    ];
+
+    // Initialize map
+    function initMap() {
+      console.log('Initializing map...');
+      
+      // Create map
+      map = L.map('map').setView([8.25, 79.85], 9);
+      
+      // Add tile layer
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(map);
+
+      // Add map click handler
+      map.on('click', function(e) {
+        console.log('Map clicked at:', e.latlng);
+        selectLocation(e.latlng, 'Custom Location');
+      });
+
+      console.log('Map initialized successfully');
+      
+      // Add initial markers
+      addMarkers();
+    }
+
+    // Add markers based on transport mode
+    function addMarkers() {
+      console.log('Adding markers...');
+      
+      // Clear existing markers
+      currentMarkers.forEach(marker => map.removeLayer(marker));
+      currentMarkers = [];
+
+      const mode = document.getElementById('transportMode').value;
+      const data = mode === 'bus' ? busStops : trainStations;
+      const icon = mode === 'bus' ? '🚌' : '🚆';
+      const className = mode === 'bus' ? 'marker-bus' : 'marker-train';
+
+      console.log(`Adding ${data.length} ${mode} markers`);
+
+      data.forEach(stop => {
+        const marker = L.marker([stop.lat, stop.lng], {
+          icon: L.divIcon({
+            className: className,
+            html: icon,
+            iconSize: [30, 30],
+            iconAnchor: [15, 30]
+          })
+        }).addTo(map);
+
+        marker.on('click', function() {
+          console.log(`${mode} stop clicked:`, stop.name);
+          selectLocation({ lat: stop.lat, lng: stop.lng }, stop.name);
+        });
+
+        marker.bindPopup(`Click to select: ${stop.name}`);
+        currentMarkers.push(marker);
+      });
+
+      document.getElementById('currentMode').textContent = mode.charAt(0).toUpperCase() + mode.slice(1);
+      console.log('Markers added successfully');
+    }
+
+    // Select a location
+    function selectLocation(latlng, name) {
+      console.log('Selecting location:', name, latlng);
+      
+      selectedLocation = { latlng, name };
+      
+      // Update form fields
+      document.getElementById('latitude').value = latlng.lat.toFixed(6);
+      document.getElementById('longitude').value = latlng.lng.toFixed(6);
+      document.getElementById('description').value = `Selected Location: ${name}`;
+      
+
+      
+      // Show confirmation message
+      showConfirmation(name, latlng);
+      
+      // Zoom to location
+      map.setView(latlng, 16);
+    }
+
+    // Show confirmation message
+    function showConfirmation(name, latlng) {
+      const confirmBox = document.getElementById('confirmationMessage');
+      const confirmName = document.getElementById('confirmLocationName');
+      const confirmCoords = document.getElementById('confirmLocationCoords');
+      
+      confirmName.textContent = name;
+      confirmCoords.textContent = `Lat: ${latlng.lat.toFixed(5)}, Lng: ${latlng.lng.toFixed(5)}`;
+      
+      confirmBox.style.display = 'block';
+      
+      // Hide after 3 seconds
+      setTimeout(() => {
+        closeConfirmation();
+      }, 3000);
+    }
+
+    // Close confirmation message
+    function closeConfirmation() {
+      const confirmBox = document.getElementById('confirmationMessage');
+      confirmBox.style.display = 'none';
+    }
+
+    // Submit form
+    function submitForm() {
+      if (!selectedLocation) {
+        showConfirmation('Error', {lat: 0, lng: 0});
+        document.getElementById('confirmLocationName').textContent = 'Please select a location first!';
+        document.getElementById('confirmLocationCoords').textContent = 'Click on map or markers to select';
+        return;
+      }
+
+      const formData = {
+        name: document.getElementById('name').value,
+        age: document.getElementById('age').value,
+        commuterType: document.getElementById('commuterType').value,
+        transportMode: document.getElementById('transportMode').value,
+        issueType: document.getElementById('issueType').value,
+        rating: document.getElementById('rating').value,
+        waitTime: document.getElementById('waitTime').value,
+        travelTime: document.getElementById('travelTime').value,
+        timestamp: document.getElementById('timestamp').value,
+        description: document.getElementById('description').value,
+        latitude: document.getElementById('latitude').value,
+        longitude: document.getElementById('longitude').value
+      };
+
+      // Validate required fields
+      if (!formData.name || !formData.age) {
+        showConfirmation('Error', {lat: 0, lng: 0});
+        document.getElementById('confirmLocationName').textContent = 'Please fill in your name and age!';
+        document.getElementById('confirmLocationCoords').textContent = 'Both fields are required';
+        return;
+      }
+
+      // Populate Google Form
+      document.getElementById('google_name').value = formData.name;
+      document.getElementById('google_age').value = formData.age;
+      document.getElementById('google_commuter').value = formData.commuterType;
+      document.getElementById('google_mode').value = formData.transportMode;
+      document.getElementById('google_issue').value = formData.issueType;
+      document.getElementById('google_rating').value = formData.rating;
+      document.getElementById('google_wait').value = formData.waitTime;
+      document.getElementById('google_travel').value = formData.travelTime;
+      document.getElementById('google_timestamp').value = formData.timestamp;
+      document.getElementById('google_description').value = formData.description;
+      document.getElementById('google_lat').value = formData.latitude;
+      document.getElementById('google_lng').value = formData.longitude;
+
+      // Submit to Google Form
+      document.getElementById('googleForm').submit();
+
+      // Show success message
+      showConfirmation('Success', {lat: 0, lng: 0});
+      document.getElementById('confirmLocationName').textContent = 'Feedback submitted successfully!';
+      document.getElementById('confirmLocationCoords').textContent = 'Thank you for your input.';
+      
+      // Clear form
+      clearForm();
+    }
+
+    // Clear form
+    function clearForm() {
+      document.getElementById('feedbackForm').reset();
+      selectedLocation = null;
+      document.getElementById('latitude').value = '';
+      document.getElementById('longitude').value = '';
+      document.getElementById('description').value = '';
+    }
+
+    // Test functions
+    function testMapClick() {
+      const center = map.getCenter();
+      console.log('Testing map click at center:', center);
+      map.fire('click', { latlng: center });
+    }
+
+    function addTestMarkers() {
+      console.log('Adding test markers...');
+      addMarkers();
+      showConfirmation('Info', {lat: 0, lng: 0});
+      document.getElementById('confirmLocationName').textContent = 'Test markers added!';
+      document.getElementById('confirmLocationCoords').textContent = 'Check the console for details.';
+    }
+
+    // Event listeners
+    document.getElementById('transportMode').addEventListener('change', addMarkers);
+
+    // Initialize when page loads
+    window.addEventListener('load', function() {
+      console.log('Page loaded, initializing...');
+      initMap();
+    });
+  </script>
+</body>
+</html> 
