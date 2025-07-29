@@ -177,8 +177,8 @@
       <div class="form-group">
         <label for="transportMode">Mode of Transport:</label>
         <select id="transportMode">
-          <option value="bus">Bus</option>
-          <option value="train">Train</option>
+          <option value="Bus">Bus</option>
+          <option value="Train">Train</option>
         </select>
       </div>
 
@@ -460,9 +460,9 @@
       currentMarkers = [];
 
       const mode = document.getElementById('transportMode').value;
-      const data = mode === 'bus' ? busStops : trainStations;
-      const icon = mode === 'bus' ? '🚌' : '🚆';
-      const className = mode === 'bus' ? 'marker-bus' : 'marker-train';
+      const data = mode === 'Bus' ? busStops : trainStations;
+      const icon = mode === 'Bus' ? '🚌' : '🚆';
+      const className = mode === 'Bus' ? 'marker-bus' : 'marker-train';
 
       console.log(`Adding ${data.length} ${mode} markers`);
 
